@@ -1,0 +1,7 @@
+{
+  "model_path": "./QWen2.5",
+  "lora_r": 4,
+  "lora_alpha": 32,
+  "num_qa_pairs": 5,
+  "training_epochs": 1
+}

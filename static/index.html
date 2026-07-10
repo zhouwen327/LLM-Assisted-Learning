@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>AI文旅大模型</title>
+    <style>
+        button {
+            padding: 8px 15px;
+            margin: 5px 5px 5px 0;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #stopBtn {
+            background-color: #ff6b6b;
+        }
+
+        #stopBtn:hover {
+            background-color: #ff5252;
+        }
+
+        #voiceBtn {
+            background-color: #2196F3;
+        }
+
+        #voiceBtn:hover {
+            background-color: #0b7dda;
+        }
+
+        #voiceStatus {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        #voiceStatus.listening {
+            display: block;
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>AI文旅大模型</h1>
+    <textarea id="msg" style="width:100%;height:120px;">介绍芜湖中江桥</textarea>
+    <br>
+    <button onclick="chat()">发送并语音播报</button>
+    <button id="voiceBtn" onclick="startVoiceInput()"> 语音输入</button>
+    <button onclick="stopSpeech()" style="background-color:#ff6b6b;">停止播报</button>
+    <div id="voiceStatus">🎙️ 正在聆听...</div>
+    <div id="result" style="margin-top:20px; padding:10px; border:1px #ddd solid;"></div>
+
+    <script>
+        // 初始化语音识别
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'zh-CN';
+            recognition.continuous = false;
+            recognition.interimResults = true;
+
+            recognition.onstart = function () {
+                isListening = true;
+                document.getElementById('voiceStatus').classList.add('listening');
+                document.getElementById('voiceBtn').innerText = '正在聆听...';
+            };
+
+            recognition.onresult = function (event) {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                document.getElementById('msg').value = transcript;
+            };
+
+            recognition.onerror = function (event) {
+                document.getElementById('result').innerText = '语音识别错误：' + event.error;
+                resetVoiceBtn();
+            };
+
+            recognition.onend = function () {
+                isListening = false;
+                document.getElementById('voiceStatus').classList.remove('listening');
+                resetVoiceBtn();
+
+                // 如果有识别到文本，自动提交
+                const text = document.getElementById('msg').value.trim();
+                if (text) {
+                    setTimeout(() => chat(), 500);  // 延迟500ms确保界面更新
+                }
+            };
+        }
+
+        function startVoiceInput() {
+            if (!recognition) {
+                document.getElementById('result').innerText = '浏览器不支持语音识别，请使用Chrome、Edge等现代浏览器';
+                return;
+            }
+
+            if (isListening) {
+                recognition.stop();
+            } else {
+                document.getElementById('msg').value = '';
+                recognition.start();
+            }
+        }
+
+        function resetVoiceBtn() {
+            document.getElementById('voiceBtn').innerText = '语音输入';
+        }
+
+        // 过滤markdown符号：# * ` > - 等
+        function cleanMarkdown(text) {
+            if (!text) return '';
+            return text
+                .replace(/[#*`>~-]/g, '')      // 删掉 # * ` > ~ -
+                .replace(/\n\s*\n/g, '\n')     // 多个空行合并成一行
+                .replace(/^\s+|\s+$/g, '');     // 首尾空格
+        }
+
+        // 浏览器原生数字人语音播报
+        function speakText(text) {
+            window.speechSynthesis.cancel();
+            let utter = new SpeechSynthesisUtterance(text);
+            utter.rate = 1.0;
+            utter.pitch = 1.0;
+            utter.lang = "zh-CN";
+            window.speechSynthesis.speak(utter);
+        }
+
+        // 停止语音播报
+        function stopSpeech() {
+            window.speechSynthesis.cancel();
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+            document.getElementById('result').innerText = "已停止";
+        }
+
+        async function chat() {
+            const r = document.getElementById('result');
+            r.innerText = "🧠 AI 思考中...";
+
+            try {
+                const res = await fetch('http://localhost:8000/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: document.getElementById('msg').value })
+                });
+                const data = await res.json();
+                let ans = data.answer || "暂无回复";
+
+                let plainText = cleanMarkdown(ans);
+
+                r.innerText = plainText;
+
+                speakText(plainText);
+
+            } catch (e) {
+                r.innerText = "连接失败：" + e;
+            }
+        }
+    </script>
+</body>
+
+</html>
