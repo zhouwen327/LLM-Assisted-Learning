@@ -14,23 +14,23 @@
 ## 安装lora 等第三方包
 - requirements 
 
-```python
-!pip install torch
-!pip install transformers
-!pip install peft
-!pip install datasets
-!pip install bitsandbytes
-!pip install accelerate
-!pip install elasticsearch
-!pip install fastapi
-!pip install uvicorn
-!pip install flask flask_cors
+```bash
+pip install torch
+pip install transformers
+pip install peft
+pip install datasets
+pip install bitsandbytes
+pip install accelerate
+pip install elasticsearch
+pip install fastapi
+pip install uvicorn
+pip install flask flask_cors
 ```
 
 ## 准备训练语料数据集
 
 - tourism_data.json
-```
+```json
 [
     {
         {
@@ -44,7 +44,7 @@
 ```
 
 ## 训练大模型
-```
+```bash
 python train_lora.py
 
 ```
@@ -54,7 +54,7 @@ python train_lora.py
 
 - 生成对localhost的自签名证书
 
-```
+```bash
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
 ```
 
@@ -62,7 +62,7 @@ openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -node
 
 - 启动程序
 
-```
+```bash
 python api_service.py --port 8000
 ```
 
