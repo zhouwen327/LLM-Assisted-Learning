@@ -1,68 +1,408 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI文旅大模型</title>
     <style>
-        button {
-            padding: 8px 15px;
-            margin: 5px 5px 5px 0;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        #map {
+            flex: 1;
+            min-width: 50%;
+            background: #e0e0e0;
+        }
+        .panel {
+            width: 420px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        .header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        .tabs {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
             cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            color: #999;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            background: white;
+        }
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+        .input-section {
+            padding: 0;
+            margin-bottom: 15px;
+        }
+        .input-section textarea {
+            width: 100%;
+            height: 70px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            resize: none;
+            font-family: inherit;
+        }
+        .input-section input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .input-section input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 4px rgba(102, 126, 234, 0.3);
+        }
+        .input-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 4px rgba(102, 126, 234, 0.3);
+        }
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        button {
+            flex: 1;
+            padding: 10px;
             border: none;
             border-radius: 4px;
-            background-color: #4CAF50;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        .send-btn {
+            background-color: #667eea;
             color: white;
-            font-size: 14px;
         }
-
-        button:hover {
-            background-color: #45a049;
+        .send-btn:hover {
+            background-color: #5568d3;
         }
-
-        #stopBtn {
-            background-color: #ff6b6b;
-        }
-
-        #stopBtn:hover {
-            background-color: #ff5252;
-        }
-
-        #voiceBtn {
+        .voice-btn {
             background-color: #2196F3;
+            color: white;
         }
-
-        #voiceBtn:hover {
+        .voice-btn:hover {
             background-color: #0b7dda;
         }
-
-        #voiceStatus {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 4px;
-            display: none;
+        .stop-btn {
+            background-color: #ff6b6b;
+            color: white;
         }
-
-        #voiceStatus.listening {
-            display: block;
+        .stop-btn:hover {
+            background-color: #ff5252;
+        }
+        .search-btn {
+            background-color: #667eea;
+            color: white;
+        }
+        .search-btn:hover {
+            background-color: #5568d3;
+        }
+        .voice-status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 12px;
+            display: none;
             background-color: #e3f2fd;
             color: #1976d2;
+            animation: pulse 1s infinite;
+        }
+        .voice-status.active {
+            display: block;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .result-box {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .result-title {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .suggestion-item {
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        .suggestion-item:hover {
+            background: #f0f8ff;
+            border-color: #667eea;
+            color: #667eea;
+        }
+        .poi-item {
+            padding: 10px;
+            background: white;
+            border-left: 3px solid #667eea;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .poi-item:hover {
+            background: #f0f8ff;
+        }
+        .poi-item strong {
+            color: #333;
+        }
+        .poi-item small {
+            color: #999;
+            display: block;
+            margin-top: 3px;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+        .route-type {
+            margin-bottom: 12px;
+        }
+        .route-type label {
+            display: inline-block;
+            margin-right: 15px;
+            font-size: 13px;
+        }
+        .route-type input[type="radio"] {
+            margin-right: 5px;
+            cursor: pointer;
         }
     </style>
 </head>
-
 <body>
-    <h1>AI文旅大模型</h1>
-    <textarea id="msg" style="width:100%;height:120px;">介绍芜湖中江桥</textarea>
-    <br>
-    <button onclick="chat()">发送并语音播报</button>
-    <button id="voiceBtn" onclick="startVoiceInput()"> 语音输入</button>
-    <button onclick="stopSpeech()" style="background-color:#ff6b6b;">停止播报</button>
-    <div id="voiceStatus">🎙️ 正在聆听...</div>
-    <div id="result" style="margin-top:20px; padding:10px; border:1px #ddd solid;"></div>
+    <div class="container">
+        <div id="map"></div>
+        
+        <div class="panel">
+            <div class="header">
+                <h1>安师大校园导航</h1>
+                <p>花津校区智能导览系统</p>
+            </div>
 
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('guide')">🧭 导游咨询</div>
+                <div class="tab" onclick="switchTab('route')">📍 路径规划</div>
+            </div>
+
+            <!-- 导游咨询标签 -->
+            <div id="guide" class="tab-content active">
+                <div class="input-section">
+                    <textarea id="msg" placeholder="输入你的问题，如：介绍图书馆、推荐食堂、校园景点..."></textarea>
+                    <div class="button-group">
+                        <button class="send-btn" onclick="chat()">🚀 发送</button>
+                        <button class="voice-btn" id="voiceBtn" onclick="startVoiceInput()">🎤 语音</button>
+                        <button class="stop-btn" onclick="stopSpeech()">⏹️</button>
+                    </div>
+                    <div class="voice-status" id="voiceStatus">
+                        <span class="spinner"></span>正在聆听...
+                    </div>
+                </div>
+                <div id="result" style="flex: 1; overflow-y: auto;"></div>
+            </div>
+
+            <!-- 路径规划标签 -->
+            <div id="route" class="tab-content">
+                <div class="warning">
+                    ℹ️ 路径规划仅限校园内部，请选择校内地点
+                </div>
+
+                <div class="input-section">
+                    <label style="font-size: 12px; font-weight: bold; color: #333; margin-bottom: 5px;">出发地</label>
+                    <input type="text" id="startInput" placeholder="点击选择校内地点" readonly style="cursor: pointer; background: #f9f9f9;">
+                    <div id="startSuggestions" style="display: none; margin-bottom: 10px;"></div>
+
+                    <label style="font-size: 12px; font-weight: bold; color: #333; margin-bottom: 5px; margin-top: 10px;">目的地</label>
+                    <input type="text" id="endInput" placeholder="点击选择校内地点" readonly style="cursor: pointer; background: #f9f9f9;">
+                    <div id="endSuggestions" style="display: none; margin-bottom: 10px;"></div>
+
+                    <div class="route-type">
+                        <label><input type="radio" name="routeType" value="walking" checked> 步行</label>
+                        <label><input type="radio" name="routeType" value="cycling"> 骑行</label>
+                    </div>
+
+                    <button class="search-btn" onclick="searchRoute()" style="width: 100%; margin: 0;">🔍 规划路线</button>
+                </div>
+
+                <div id="routeResult" style="flex: 1; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 百度地图API -->
+    <script src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=???????"></script>
+    
     <script>
-        // 初始化语音识别
+        // =============== 校园地点数据库 (具体请自行查询) ===============
+        const campusLocations = [
+            { name: '花津校区大门', lng: 118.3807, lat: 31.2890, desc: '校园主入口' },
+            { name: '图书馆', lng: 118.3820, lat: 31.2905, desc: '四楼藏书丰富' },
+            { name: '学生食堂', lng: 118.3795, lat: 31.2880, desc: '三层楼美食云集' },
+            { name: '教学楼A', lng: 118.3812, lat: 31.2898, desc: '文科教学' },
+            { name: '教学楼B', lng: 118.3825, lat: 31.2885, desc: '理科教学' },
+            { name: '学生宿舍', lng: 118.3810, lat: 31.2870, desc: '学生住宿区' },
+            { name: '体育馆', lng: 118.3835, lat: 31.2910, desc: '篮球、羽毛球' },
+            { name: '操场', lng: 118.3805, lat: 31.2860, desc: '田径、足球' },
+            { name: '学生活动中心', lng: 118.3818, lat: 31.2875, desc: '社团活动地点' },
+            { name: '医务室', lng: 118.3800, lat: 31.2895, desc: '医疗服务' },
+            { name: '校医院', lng: 118.3808, lat: 31.2878, desc: '校医院' },
+            { name: '停车场', lng: 118.3830, lat: 31.2895, desc: '车辆停放' },
+            { name: '美术馆', lng: 118.3815, lat: 31.2920, desc: '艺术展览' },
+            { name: '音乐厅', lng: 118.3822, lat: 31.2915, desc: '音乐演出' },
+        ];
+
+        // =============== 地图初始化 ===============
+        let map;
+        let currentMarkers = [];
+
+        function initMap() {
+            map = new BMapGL.Map('map');
+            map.centerAndZoom(new BMapGL.Point(118.3807, 31.2890), 16);
+            map.enableScrollWheelZoom(true);
+            map.addControl(new BMapGL.NavigationControl());
+            map.addControl(new BMapGL.ScaleControl());
+            
+            // 初始化校园地点标记
+            campusLocations.forEach(loc => {
+                addCampusMarker(loc);
+            });
+        }
+
+        function addCampusMarker(location) {
+            const marker = new BMapGL.Marker(
+                new BMapGL.Point(location.lng, location.lat),
+                { title: location.name }
+            );
+            map.addOverlay(marker);
+            currentMarkers.push(marker);
+
+            const infoWindow = new BMapGL.InfoWindow(
+                `<div style="width: 200px; padding: 10px; font-size: 12px;">
+                    <strong style="color: #667eea;">${location.name}</strong><br>
+                    <small style="color: #999;">${location.desc}</small><br>
+                    <small style="color: #999;">坐标: ${location.lng.toFixed(4)}, ${location.lat.toFixed(4)}</small>
+                </div>`,
+                { offset: new BMapGL.Size(0, -30) }
+            );
+
+            marker.addEventListener('click', function() {
+                map.openInfoWindow(infoWindow, marker.getPosition());
+            });
+        }
+
+        function clearRouteMarkers() {
+            // 仅清除路线标记，保留校园地点标记
+            currentMarkers = currentMarkers.filter(marker => {
+                const isRoute = marker.isRouteMarker;
+                if (isRoute) map.removeOverlay(marker);
+                return !isRoute;
+            });
+        }
+
+        // =============== 标签切换 ===============
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // =============== 语音识别 ===============
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let isListening = false;
@@ -73,13 +413,13 @@
             recognition.continuous = false;
             recognition.interimResults = true;
 
-            recognition.onstart = function () {
+            recognition.onstart = function() {
                 isListening = true;
-                document.getElementById('voiceStatus').classList.add('listening');
-                document.getElementById('voiceBtn').innerText = '正在聆听...';
+                document.getElementById('voiceStatus').classList.add('active');
+                document.getElementById('voiceBtn').innerText = '聆听中...';
             };
 
-            recognition.onresult = function (event) {
+            recognition.onresult = function(event) {
                 let transcript = '';
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     transcript += event.results[i][0].transcript;
@@ -87,30 +427,29 @@
                 document.getElementById('msg').value = transcript;
             };
 
-            recognition.onerror = function (event) {
-                document.getElementById('result').innerText = '语音识别错误：' + event.error;
+            recognition.onerror = function(event) {
+                showResult('语音识别错误：' + event.error);
                 resetVoiceBtn();
             };
 
-            recognition.onend = function () {
+            recognition.onend = function() {
                 isListening = false;
-                document.getElementById('voiceStatus').classList.remove('listening');
+                document.getElementById('voiceStatus').classList.remove('active');
                 resetVoiceBtn();
-
-                // 如果有识别到文本，自动提交
+                
                 const text = document.getElementById('msg').value.trim();
                 if (text) {
-                    setTimeout(() => chat(), 500);  // 延迟500ms确保界面更新
+                    setTimeout(() => chat(), 500);
                 }
             };
         }
 
         function startVoiceInput() {
             if (!recognition) {
-                document.getElementById('result').innerText = '浏览器不支持语音识别，请使用Chrome、Edge等现代浏览器';
+                showResult('浏览器不支持语音识别，请使用Chrome、Edge等现代浏览器');
                 return;
             }
-
+            
             if (isListening) {
                 recognition.stop();
             } else {
@@ -120,19 +459,19 @@
         }
 
         function resetVoiceBtn() {
-            document.getElementById('voiceBtn').innerText = '语音输入';
+            document.getElementById('voiceBtn').innerText = '语音';
         }
 
-        // 过滤markdown符号：# * ` > - 等
+        // =============== 文本处理 ===============
         function cleanMarkdown(text) {
             if (!text) return '';
             return text
-                .replace(/[#*`>~-]/g, '')      // 删掉 # * ` > ~ -
-                .replace(/\n\s*\n/g, '\n')     // 多个空行合并成一行
-                .replace(/^\s+|\s+$/g, '');     // 首尾空格
+                .replace(/[#*`>~-]/g, '')
+                .replace(/\n\s*\n/g, '\n')
+                .replace(/^\s+|\s+$/g, '');
         }
 
-        // 浏览器原生数字人语音播报
+        // =============== 语音播报 ===============
         function speakText(text) {
             window.speechSynthesis.cancel();
             let utter = new SpeechSynthesisUtterance(text);
@@ -142,39 +481,228 @@
             window.speechSynthesis.speak(utter);
         }
 
-        // 停止语音播报
         function stopSpeech() {
             window.speechSynthesis.cancel();
             if (recognition && isListening) {
                 recognition.stop();
             }
-            document.getElementById('result').innerText = "已停止";
+            showResult('⏹️ 已停止');
         }
 
+        // =============== 结果显示 ===============
+        function showResult(content) {
+            document.getElementById('result').innerHTML = 
+                '<div class="result-box">' + content + '</div>';
+        }
+
+        function showLoading() {
+            document.getElementById('result').innerHTML = 
+                '<div class="loading"><span class="spinner"></span>AI思考中...</div>';
+        }
+
+        // =============== AI查询 ===============
         async function chat() {
-            const r = document.getElementById('result');
-            r.innerText = "🧠 AI 思考中...";
+            const query = document.getElementById('msg').value.trim();
+            if (!query) {
+                showResult('📝 请输入问题');
+                return;
+            }
+
+            showLoading();
 
             try {
-                const res = await fetch('http://localhost:8000/query', {
+                const res = await fetch('http://127.0.0.1:8000/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: document.getElementById('msg').value })
+                    body: JSON.stringify({ query: query })
                 });
+                
+                if (!res.ok) throw new Error('服务响应异常');
                 const data = await res.json();
                 let ans = data.answer || "暂无回复";
-
                 let plainText = cleanMarkdown(ans);
 
-                r.innerText = plainText;
-
+                let resultHtml = '<div class="result-box">';
+                resultHtml += '<div class="result-title">' + query + '</div>';
+                resultHtml += plainText.replace(/\n/g, '<br>');
+                resultHtml += '</div>';
+                
+                document.getElementById('result').innerHTML = resultHtml;
                 speakText(plainText);
 
             } catch (e) {
-                r.innerText = "连接失败：" + e;
+                showResult('连接失败：' + e.message);
             }
         }
+
+        // =============== 路径规划 ===============
+        let selectedStart = null;
+        let selectedEnd = null;
+
+        function initRouteSearch() {
+            document.getElementById('startInput').addEventListener('click', function() {
+                showLocationSelector('start');
+            });
+            
+            document.getElementById('endInput').addEventListener('click', function() {
+                showLocationSelector('end');
+            });
+        }
+
+        function showLocationSelector(type) {
+            const html = campusLocations.map(loc => {
+              
+                return `<div class="suggestion-item" data-type="${type}" data-name="${loc.name}" data-lng="${loc.lng}" data-lat="${loc.lat}">${loc.name}</div>`;
+            }).join('');
+            
+            const container = document.getElementById(type === 'start' ? 'startSuggestions' : 'endSuggestions');
+            container.innerHTML = html;
+            container.style.display = 'block';
+            
+        
+            container.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    const name = this.dataset.name;
+                    const lng = parseFloat(this.dataset.lng);
+                    const lat = parseFloat(this.dataset.lat);
+                    selectLocation(type, name, lng, lat);
+                });
+            });
+        }
+
+
+        function selectLocation(type, name, lng, lat) {
+            console.log(`选择${type}:`, name, lng, lat); 
+            
+            if (type === 'start') {
+                selectedStart = { name, lng, lat };
+                document.getElementById('startInput').value = name;
+                document.getElementById('startSuggestions').style.display = 'none';
+            } else {
+                selectedEnd = { name, lng, lat };
+                document.getElementById('endInput').value = name;
+                document.getElementById('endSuggestions').style.display = 'none';
+            }
+        }
+
+        function searchRoute() {
+            if (!selectedStart || !selectedEnd) {
+                document.getElementById('routeResult').innerHTML = 
+                    '<div class="result-box" style="color: #ff6b6b;"> 请选择起点和终点</div>';
+                return;
+            }
+
+            if (selectedStart.name === selectedEnd.name) {
+                document.getElementById('routeResult').innerHTML = 
+                    '<div class="result-box" style="color: #ff6b6b;">起点和终点不能相同</div>';
+                return;
+            }
+
+            // 模拟路径规划
+            const routeType = document.querySelector('input[name="routeType"]:checked').value;
+            const typeText = routeType === 'walking' ? '步行' : '骑行';
+            
+            // 简单计算距离
+            const dist = Math.sqrt(
+                Math.pow(selectedEnd.lng - selectedStart.lng, 2) + 
+                Math.pow(selectedEnd.lat - selectedStart.lat, 2)
+            ) * 111000; // 转换为米
+            
+            const walkTime = Math.ceil(dist / 1.4); // 假设步行速度1.4m/s
+            const cycleTime = Math.ceil(dist / 5); // 假设骑行速度5m/s
+
+            clearRouteMarkers();
+
+            // 绘制起点标记（绿色）
+            const startMarker = new BMapGL.Marker(
+                new BMapGL.Point(selectedStart.lng, selectedStart.lat),
+                { title: '起点：' + selectedStart.name }
+            );
+            // 设置绿色图标
+            startMarker.setIcon(new BMapGL.Icon(
+                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%2334c759"/><text x="16" y="20" text-anchor="middle" font-size="16" fill="white" font-weight="bold">S</text></svg>',
+                new BMapGL.Size(32, 32)
+            ));
+
+            // 绘制终点标记（红色）
+            const endMarker = new BMapGL.Marker(
+                new BMapGL.Point(selectedEnd.lng, selectedEnd.lat),
+                { title: '终点：' + selectedEnd.name }
+            );
+            // 设置红色图标
+            endMarker.setIcon(new BMapGL.Icon(
+                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23ff3b30"/><text x="16" y="20" text-anchor="middle" font-size="16" fill="white" font-weight="bold">E</text></svg>',
+                new BMapGL.Size(32, 32)
+            ));
+
+            startMarker.isRouteMarker = true;
+            endMarker.isRouteMarker = true;
+
+            map.addOverlay(startMarker);
+            map.addOverlay(endMarker);
+
+            currentMarkers.push(startMarker);
+            currentMarkers.push(endMarker);
+
+          
+            // 创建折线路径点
+            const polylinePoints = [
+                new BMapGL.Point(selectedStart.lng, selectedStart.lat),
+                new BMapGL.Point(selectedEnd.lng, selectedEnd.lat)
+            ];
+
+            // 绘制蓝色折线
+            const polyline = new BMapGL.Polyline(polylinePoints, {
+                strokeColor: '#667eea',
+                strokeWeight: 4,
+                strokeOpacity: 0.8,
+                strokeStyle: 'solid'
+            });
+
+            map.addOverlay(polyline);
+
+            polyline.isRouteMarker = true;
+            currentMarkers.push(polyline);
+
+     
+
+       
+            map.setViewport([
+                new BMapGL.Point(selectedStart.lng, selectedStart.lat),
+                new BMapGL.Point(selectedEnd.lng, selectedEnd.lat)
+            ], {
+                margins: [50, 50, 50, 50] 
+            });
+
+            const resultHtml = `
+                <div class="result-box">
+                    <div class="result-title">路线规划成功</div>
+                    <strong>${selectedStart.name} → ${selectedEnd.name}</strong><br>
+                    <small style="color: #999;">距离: ${dist.toFixed(0)}米</small><br>
+                    <small style="color: #999;">
+                        ${typeText}时间: 约${routeType === 'walking' ? walkTime : cycleTime}秒
+                    </small>
+                </div>
+                <div class="result-box">
+                    <strong>路线建议：</strong><br>
+                    <small style="line-height: 1.8;">
+                        • 从${selectedStart.name}出发<br>
+                        • 沿校园主干道前进<br>
+                        • 到达${selectedEnd.name}<br>
+                        <br>💡 请注意校园内交通安全
+                    </small>
+                </div>
+            `;
+
+            document.getElementById('routeResult').innerHTML = resultHtml;
+        }
+
+        // 页面加载完成
+        window.addEventListener('load', function() {
+            initMap();
+            initRouteSearch();
+        });
     </script>
 </body>
-
 </html>
