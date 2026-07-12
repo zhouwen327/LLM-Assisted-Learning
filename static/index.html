@@ -275,7 +275,7 @@
             </div>
 
             <div class="tabs">
-                <div class="tab active" onclick="switchTab('guide')">🧭 导游咨询</div>
+                <div class="tab active" onclick="switchTab('guide')">🧭 AI问答</div>
                 <div class="tab" onclick="switchTab('route')">📍 路径规划</div>
             </div>
 
@@ -315,7 +315,11 @@
                         <label><input type="radio" name="routeType" value="cycling"> 骑行</label>
                     </div>
 
-                    <button class="search-btn" onclick="searchRoute()" style="width: 100%; margin: 0;">🔍 规划路线</button>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="search-btn" onclick="searchRoute()" style="flex: 1; margin: 0;">🔍 规划路线</button>
+                        <button class="stop-btn" onclick="clearRoute()" style="flex: 1; margin: 0;">🗑️ 清除</button>
+                    </div>
+               
                 </div>
 
                 <div id="routeResult" style="flex: 1; overflow-y: auto;"></div>
@@ -324,26 +328,27 @@
     </div>
 
     <!-- 百度地图API -->
-    <script src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=???????"></script>
+
+    <script src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=????????"></script>
     
     <script>
         // =============== 校园地点数据库 (具体请自行查询) ===============
-        const campusLocations = [
-            { name: '花津校区大门', lng: 118.3807, lat: 31.2890, desc: '校园主入口' },
-            { name: '图书馆', lng: 118.3820, lat: 31.2905, desc: '四楼藏书丰富' },
-            { name: '学生食堂', lng: 118.3795, lat: 31.2880, desc: '三层楼美食云集' },
-            { name: '教学楼A', lng: 118.3812, lat: 31.2898, desc: '文科教学' },
-            { name: '教学楼B', lng: 118.3825, lat: 31.2885, desc: '理科教学' },
-            { name: '学生宿舍', lng: 118.3810, lat: 31.2870, desc: '学生住宿区' },
-            { name: '体育馆', lng: 118.3835, lat: 31.2910, desc: '篮球、羽毛球' },
-            { name: '操场', lng: 118.3805, lat: 31.2860, desc: '田径、足球' },
-            { name: '学生活动中心', lng: 118.3818, lat: 31.2875, desc: '社团活动地点' },
-            { name: '医务室', lng: 118.3800, lat: 31.2895, desc: '医疗服务' },
-            { name: '校医院', lng: 118.3808, lat: 31.2878, desc: '校医院' },
-            { name: '停车场', lng: 118.3830, lat: 31.2895, desc: '车辆停放' },
-            { name: '美术馆', lng: 118.3815, lat: 31.2920, desc: '艺术展览' },
-            { name: '音乐厅', lng: 118.3822, lat: 31.2915, desc: '音乐演出' },
-        ];
+       const campusLocations = [
+    { name: '花津校区大门', lng: 118.3807, lat: 31.2890, desc: '校园主入口', panorama: 'https://example.com/panorama/gate' },
+    { name: '图书馆', lng: 118.3820, lat: 31.2905, desc: '四楼藏书丰富', panorama: 'https://example.com/panorama/library' },
+    { name: '学生食堂', lng: 118.3795, lat: 31.2880, desc: '三层楼美食云集', panorama: 'https://example.com/panorama/canteen' },
+    { name: '教学楼A', lng: 118.3812, lat: 31.2898, desc: '文科教学', panorama: 'https://example.com/panorama/building-a' },
+    { name: '教学楼B', lng: 118.3825, lat: 31.2885, desc: '理科教学', panorama: 'https://example.com/panorama/building-b' },
+    { name: '学生宿舍', lng: 118.3810, lat: 31.2870, desc: '学生住宿区', panorama: 'https://example.com/panorama/dorm' },
+    { name: '体育馆', lng: 118.3835, lat: 31.2910, desc: '篮球、羽毛球', panorama: 'https://example.com/panorama/gym' },
+    { name: '操场', lng: 118.3805, lat: 31.2860, desc: '田径、足球', panorama: 'https://example.com/panorama/playground' },
+    { name: '学生活动中心', lng: 118.3818, lat: 31.2875, desc: '社团活动地点', panorama: 'https://example.com/panorama/activity' },
+    { name: '医务室', lng: 118.3800, lat: 31.2895, desc: '医疗服务', panorama: 'https://example.com/panorama/clinic' },
+    { name: '校医院', lng: 118.3808, lat: 31.2878, desc: '校医院', panorama: 'https://example.com/panorama/hospital' },
+    { name: '停车场', lng: 118.3830, lat: 31.2895, desc: '车辆停放', panorama: 'https://example.com/panorama/parking' },
+    { name: '美术馆', lng: 118.3815, lat: 31.2920, desc: '艺术展览', panorama: 'https://example.com/panorama/gallery' },
+    { name: '音乐厅', lng: 118.3822, lat: 31.2915, desc: '音乐演出', panorama: 'https://example.com/panorama/auditorium' },
+    ];
 
         // =============== 地图初始化 ===============
         let map;
@@ -370,11 +375,15 @@
             map.addOverlay(marker);
             currentMarkers.push(marker);
 
+            // 修改信息窗口内容，添加全景链接
             const infoWindow = new BMapGL.InfoWindow(
-                `<div style="width: 200px; padding: 10px; font-size: 12px;">
-                    <strong style="color: #667eea;">${location.name}</strong><br>
+                `<div style="width: 220px; padding: 10px; font-size: 12px;">
+                    <strong style="color: #667eea; font-size: 14px;">${location.name}</strong><br>
                     <small style="color: #999;">${location.desc}</small><br>
-                    <small style="color: #999;">坐标: ${location.lng.toFixed(4)}, ${location.lat.toFixed(4)}</small>
+                    <small style="color: #999;">坐标: ${location.lng.toFixed(4)}, ${location.lat.toFixed(4)}</small><br>
+                    <a href="${location.panorama}" target="_blank" style="color: #2196F3; text-decoration: none; margin-top: 8px; display: inline-block;">
+                        🌐 查看全景漫游 →
+                    </a>
                 </div>`,
                 { offset: new BMapGL.Size(0, -30) }
             );
@@ -384,8 +393,10 @@
             });
         }
 
+
+
         function clearRouteMarkers() {
-            // 仅清除路线标记，保留校园地点标记
+            
             currentMarkers = currentMarkers.filter(marker => {
                 const isRoute = marker.isRouteMarker;
                 if (isRoute) map.removeOverlay(marker);
@@ -550,18 +561,24 @@
         }
 
         function showLocationSelector(type) {
-            const html = campusLocations.map(loc => {
-              
-                return `<div class="suggestion-item" data-type="${type}" data-name="${loc.name}" data-lng="${loc.lng}" data-lat="${loc.lat}">${loc.name}</div>`;
-            }).join('');
+            const html = campusLocations.map(loc => 
+                `<div class="suggestion-item" data-type="${type}" data-name="${loc.name}" data-lng="${loc.lng}" data-lat="${loc.lat}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>${loc.name}</span>
+                        <a href="${loc.panorama}" target="_blank" style="color: #2196F3; font-size: 11px; text-decoration: none;">全景</a>
+                    </div>
+                </div>`
+            ).join('');
             
             const container = document.getElementById(type === 'start' ? 'startSuggestions' : 'endSuggestions');
             container.innerHTML = html;
             container.style.display = 'block';
             
-        
             container.querySelectorAll('.suggestion-item').forEach(item => {
-                item.addEventListener('click', function() {
+                item.addEventListener('click', function(e) {
+                    // 如果点击的是链接，不触发地点选择
+                    if (e.target.tagName === 'A') return;
+                    
                     const type = this.dataset.type;
                     const name = this.dataset.name;
                     const lng = parseFloat(this.dataset.lng);
@@ -698,11 +715,38 @@
             document.getElementById('routeResult').innerHTML = resultHtml;
         }
 
+
+        function clearRoute() {
+              
+            clearRouteMarkers();
+    
+            selectedStart = null;
+            selectedEnd = null;
+            
+    
+            document.getElementById('startInput').value = '';
+            document.getElementById('endInput').value = '';
+    
+            document.getElementById('startSuggestions').style.display = 'none';
+            document.getElementById('endSuggestions').style.display = 'none';
+            
+        
+            document.getElementById('routeResult').innerHTML = '';
+            
+            map.centerAndZoom(new BMapGL.Point(118.3807, 31.2890), 16);
+        }
+
         // 页面加载完成
         window.addEventListener('load', function() {
             initMap();
             initRouteSearch();
         });
+
+
+
+
+               
+
     </script>
 </body>
 </html>
