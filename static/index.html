@@ -279,14 +279,14 @@
                 <div class="tab" onclick="switchTab('route')">📍 路径规划</div>
             </div>
 
-            <!-- 导游咨询标签 -->
+            <!-- AI咨询标签 -->
             <div id="guide" class="tab-content active">
                 <div class="input-section">
                     <textarea id="msg" placeholder="输入你的问题，如：介绍图书馆、推荐食堂、校园景点..."></textarea>
                     <div class="button-group">
-                        <button class="send-btn" onclick="chat()">🚀 发送</button>
-                        <button class="voice-btn" id="voiceBtn" onclick="startVoiceInput()">🎤 语音</button>
-                        <button class="stop-btn" onclick="stopSpeech()">⏹️</button>
+                        <button class="send-btn" onclick="chat()">发送</button>
+                        <button class="voice-btn" id="voiceBtn" onclick="startVoiceInput()">发送语音</button>
+                        <button class="stop-btn" onclick="stopSpeech()">停止</button>
                     </div>
                     <div class="voice-status" id="voiceStatus">
                         <span class="spinner"></span>正在聆听...
@@ -328,8 +328,8 @@
     </div>
 
     <!-- 百度地图API -->
-    //==============Note: add baidu map's ak (????) or can't run () ===============
-    <script src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=????"></script>
+
+    <script src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=vhaKGKgyl2iGwn4AaGTfXGyz"></script>
     
     <script>
         // =============== 校园地点数据库 (具体请自行查询) ===============
