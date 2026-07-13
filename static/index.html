@@ -275,7 +275,7 @@
             </div>
 
             <div class="tabs">
-                <div class="tab active" onclick="switchTab('guide')">🧭 AI问答</div>
+                <div class="tab active" onclick="switchTab('guide')">🧭 AI咨询</div>
                 <div class="tab" onclick="switchTab('route')">📍 路径规划</div>
             </div>
 
@@ -329,7 +329,7 @@
 
     <!-- 百度地图API -->
 
-    <script src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=????????"></script>
+    <script src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=vhaKGKgyl2iGwn4AaGTfXGyz"></script>
     
     <script>
         // =============== 校园地点数据库 (具体请自行查询) ===============
@@ -352,7 +352,14 @@
 
         // =============== 地图初始化 ===============
         let map;
+        
         let currentMarkers = [];
+
+        let walkingRoute = null;
+        let ridingRoute = null;
+
+        let selectedStart = null;
+        let selectedEnd = null;
 
         function initMap() {
             map = new BMapGL.Map('map');
@@ -396,12 +403,25 @@
 
 
         function clearRouteMarkers() {
-            
-            currentMarkers = currentMarkers.filter(marker => {
-                const isRoute = marker.isRouteMarker;
-                if (isRoute) map.removeOverlay(marker);
-                return !isRoute;
+           
+            currentMarkers.forEach(marker => {
+                if (marker.isRouteMarker) {
+                    map.removeOverlay(marker);
+                }
             });
+            
+            // 从数组中移除已删除的标记
+            currentMarkers = currentMarkers.filter(marker => !marker.isRouteMarker);
+            
+            // 销毁路线对象，清除其事件监听
+            if (typeof walkingRoute !== 'undefined' && walkingRoute) {
+                walkingRoute.clearResults();
+                walkingRoute = null;
+            }
+            if (typeof ridingRoute !== 'undefined' && ridingRoute) {
+                ridingRoute.clearResults();
+                ridingRoute = null;
+            }
         }
 
         // =============== 标签切换 ===============
@@ -547,9 +567,7 @@
         }
 
         // =============== 路径规划 ===============
-        let selectedStart = null;
-        let selectedEnd = null;
-
+    
         function initRouteSearch() {
             document.getElementById('startInput').addEventListener('click', function() {
                 showLocationSelector('start');
@@ -590,7 +608,6 @@
 
 
         function selectLocation(type, name, lng, lat) {
-            console.log(`选择${type}:`, name, lng, lat); 
             
             if (type === 'start') {
                 selectedStart = { name, lng, lat };
@@ -604,146 +621,169 @@
         }
 
         function searchRoute() {
-            if (!selectedStart || !selectedEnd) {
-                document.getElementById('routeResult').innerHTML = 
-                    '<div class="result-box" style="color: #ff6b6b;"> 请选择起点和终点</div>';
-                return;
+                if (!selectedStart || !selectedEnd) {
+                    document.getElementById('routeResult').innerHTML = 
+                        '<div class="result-box" style="color: #ff6b6b;">❌ 请选择起点和终点</div>';
+                    return;
+                }
+
+                if (selectedStart.name === selectedEnd.name) {
+                    document.getElementById('routeResult').innerHTML = 
+                        '<div class="result-box" style="color: #ff6b6b;">❌ 起点和终点不能相同</div>';
+                    return;
+                }
+
+                clearRouteMarkers();
+                const startPoint = new BMapGL.Point(selectedStart.lng, selectedStart.lat);
+                const endPoint = new BMapGL.Point(selectedEnd.lng, selectedEnd.lat);
+               
+                // 绘制起点标记（绿色）
+                const startMarker = new BMapGL.Marker(startPoint, { title: '起点：' + selectedStart.name });
+                startMarker.setIcon(new BMapGL.Icon(
+                    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%2334c759"/><text x="16" y="20" text-anchor="middle" font-size="16" fill="white" font-weight="bold">S</text></svg>',
+                    new BMapGL.Size(32, 32)
+                ));
+                startMarker.isRouteMarker = true;
+                map.addOverlay(startMarker);
+                currentMarkers.push(startMarker);
+
+                // 绘制终点标记（红色）
+                const endMarker = new BMapGL.Marker(endPoint, { title: '终点：' + selectedEnd.name });
+                endMarker.setIcon(new BMapGL.Icon(
+                    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23ff3b30"/><text x="16" y="20" text-anchor="middle" font-size="16" fill="white" font-weight="bold">E</text></svg>',
+                    new BMapGL.Size(32, 32)
+                ));
+                endMarker.isRouteMarker = true;
+                map.addOverlay(endMarker);
+                currentMarkers.push(endMarker);
+
+
+                const routeType = document.querySelector('input[name="routeType"]:checked').value;
+                const typeText = routeType === 'walking' ? '步行' : '骑行';
+
+
+                // ===== 使用百度地图导航服务 =====
+                walkingRoute  = new BMapGL.WalkingRoute(map, {
+                    renderOptions: {
+                        map: map,
+                        autoViewport: false,
+                        strokeColor: '#667eea',
+                        strokeWeight: 4,
+                        strokeOpacity: 0.8
+                    }
+                });
+
+                ridingRoute  = new BMapGL.RidingRoute(map, {
+                    renderOptions: {
+                        map: map,
+                        autoViewport: false,
+                        strokeColor: '#667eea',
+                        strokeWeight: 4,
+                        strokeOpacity: 0.8
+                    }
+                });
+
+                // 选择出行方式
+                const route = routeType === 'walking' ? walkingRoute : ridingRoute ;
+
+                // 搜索路线
+                route.search(startPoint, endPoint);
+
+                // 监听搜索完成
+                map.addEventListener('routeSearchComplete', function(event) {
+                    if (event && event.getResult && typeof event.getResult === 'function') {
+                        const result = event.getResult();
+                        
+                        if (result && result.routes && result.routes.length > 0) {
+                            const routeInfo = result.routes[0];
+                            const distance = routeInfo.distance;
+                            const duration = routeInfo.duration;
+
+                            // 获取路线步骤
+                            let stepsHtml = '';
+                            if (routeInfo.steps && routeInfo.steps.length > 0) {
+                                routeInfo.steps.forEach((step, index) => {
+                                    stepsHtml += `<small style="display: block; margin-bottom: 4px;">
+                                        📍 ${index + 1}. ${step.instruction || '按路线行进'}
+                                    </small>`;
+                                });
+                            }
+
+                            // 自动缩放地图
+                            map.setViewport([startPoint, endPoint], { margins: [50, 50, 50, 50] });
+
+                            // 显示结果
+                            const resultHtml = `
+                                <div class="result-box">
+                                    <div class="result-title">路线规划成功</div>
+                                    <strong>${selectedStart.name} → ${selectedEnd.name}</strong><br>
+                                    <small style="color: #999;">距离: ${(distance / 1000).toFixed(2)}公里</small><br>
+                                    <small style="color: #999;">
+                                        ${typeText}时间: 约${Math.ceil(duration / 60)}分钟
+                                    </small>
+                                </div>
+                                <div class="result-box">
+                                    <strong>路线步骤：</strong><br>
+                                    <small style="line-height: 1.8; color: #666;">
+                                        ${stepsHtml || '请按地图上的蓝色路线行进'}
+                                    </small>
+                                </div>
+                                <div class="result-box">
+                                    <strong>💡 出行建议：</strong><br>
+                                    <small style="line-height: 1.8; color: #666;">
+                                        • 请按照地图上的蓝色路线行进<br>
+                                        • 预留充足的时间<br>
+                                        • 注意校园内交通安全<br>
+                                        • 校园内禁止机动车通行
+                                    </small>
+                                </div>
+                            `;
+
+                            document.getElementById('routeResult').innerHTML = resultHtml;
+                        } else {
+                            document.getElementById('routeResult').innerHTML = 
+                                '<div class="result-box" style="color: #ff6b6b;">未找到合适的路线</div>';
+                        }
+                    }
+                });
+
+                // 错误处理
+                map.addEventListener('routeSearchError', function() {
+                    document.getElementById('routeResult').innerHTML = 
+                        '<div class="result-box" style="color: #ff6b6b;">路线规划失败，请检查网络或稍后重试</div>';
+                });
             }
-
-            if (selectedStart.name === selectedEnd.name) {
-                document.getElementById('routeResult').innerHTML = 
-                    '<div class="result-box" style="color: #ff6b6b;">起点和终点不能相同</div>';
-                return;
-            }
-
-            // 模拟路径规划
-            const routeType = document.querySelector('input[name="routeType"]:checked').value;
-            const typeText = routeType === 'walking' ? '步行' : '骑行';
-            
-            // 简单计算距离
-            const dist = Math.sqrt(
-                Math.pow(selectedEnd.lng - selectedStart.lng, 2) + 
-                Math.pow(selectedEnd.lat - selectedStart.lat, 2)
-            ) * 111000; // 转换为米
-            
-            const walkTime = Math.ceil(dist / 1.4); // 假设步行速度1.4m/s
-            const cycleTime = Math.ceil(dist / 5); // 假设骑行速度5m/s
-
-            clearRouteMarkers();
-
-            // 绘制起点标记（绿色）
-            const startMarker = new BMapGL.Marker(
-                new BMapGL.Point(selectedStart.lng, selectedStart.lat),
-                { title: '起点：' + selectedStart.name }
-            );
-            // 设置绿色图标
-            startMarker.setIcon(new BMapGL.Icon(
-                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%2334c759"/><text x="16" y="20" text-anchor="middle" font-size="16" fill="white" font-weight="bold">S</text></svg>',
-                new BMapGL.Size(32, 32)
-            ));
-
-            // 绘制终点标记（红色）
-            const endMarker = new BMapGL.Marker(
-                new BMapGL.Point(selectedEnd.lng, selectedEnd.lat),
-                { title: '终点：' + selectedEnd.name }
-            );
-            // 设置红色图标
-            endMarker.setIcon(new BMapGL.Icon(
-                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23ff3b30"/><text x="16" y="20" text-anchor="middle" font-size="16" fill="white" font-weight="bold">E</text></svg>',
-                new BMapGL.Size(32, 32)
-            ));
-
-            startMarker.isRouteMarker = true;
-            endMarker.isRouteMarker = true;
-
-            map.addOverlay(startMarker);
-            map.addOverlay(endMarker);
-
-            currentMarkers.push(startMarker);
-            currentMarkers.push(endMarker);
-
-          
-            // 创建折线路径点
-            const polylinePoints = [
-                new BMapGL.Point(selectedStart.lng, selectedStart.lat),
-                new BMapGL.Point(selectedEnd.lng, selectedEnd.lat)
-            ];
-
-            // 绘制蓝色折线
-            const polyline = new BMapGL.Polyline(polylinePoints, {
-                strokeColor: '#667eea',
-                strokeWeight: 4,
-                strokeOpacity: 0.8,
-                strokeStyle: 'solid'
-            });
-
-            map.addOverlay(polyline);
-
-            polyline.isRouteMarker = true;
-            currentMarkers.push(polyline);
-
-     
-
-       
-            map.setViewport([
-                new BMapGL.Point(selectedStart.lng, selectedStart.lat),
-                new BMapGL.Point(selectedEnd.lng, selectedEnd.lat)
-            ], {
-                margins: [50, 50, 50, 50] 
-            });
-
-            const resultHtml = `
-                <div class="result-box">
-                    <div class="result-title">路线规划成功</div>
-                    <strong>${selectedStart.name} → ${selectedEnd.name}</strong><br>
-                    <small style="color: #999;">距离: ${dist.toFixed(0)}米</small><br>
-                    <small style="color: #999;">
-                        ${typeText}时间: 约${routeType === 'walking' ? walkTime : cycleTime}秒
-                    </small>
-                </div>
-                <div class="result-box">
-                    <strong>路线建议：</strong><br>
-                    <small style="line-height: 1.8;">
-                        • 从${selectedStart.name}出发<br>
-                        • 沿校园主干道前进<br>
-                        • 到达${selectedEnd.name}<br>
-                        <br>💡 请注意校园内交通安全
-                    </small>
-                </div>
-            `;
-
-            document.getElementById('routeResult').innerHTML = resultHtml;
-        }
 
 
         function clearRoute() {
-              
+            
             clearRouteMarkers();
-    
+
             selectedStart = null;
             selectedEnd = null;
             
-    
+       
             document.getElementById('startInput').value = '';
             document.getElementById('endInput').value = '';
-    
             document.getElementById('startSuggestions').style.display = 'none';
             document.getElementById('endSuggestions').style.display = 'none';
-            
-        
             document.getElementById('routeResult').innerHTML = '';
             
             map.centerAndZoom(new BMapGL.Point(118.3807, 31.2890), 16);
+        
         }
 
-        // 页面加载完成
-        window.addEventListener('load', function() {
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                initMap();
+                initRouteSearch();
+            });
+        } else {
+           
             initMap();
             initRouteSearch();
-        });
-
-
-
+        }
 
                
 
