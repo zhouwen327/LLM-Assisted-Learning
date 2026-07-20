@@ -43,12 +43,16 @@ pip install flask flask_cors
 ]
 ```
 
-## 训练大模型
+## 训练大模型 (可选)
 ```bash
 python train_lora.py
 
 ```
+## 增加知识图谱取代大模型训练，针对样本数量不足的情况
 
+```
+knowledges.py
+```
 
 ## 启动HTTPS服务 (可选)
 
